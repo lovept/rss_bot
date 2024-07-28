@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `rss_sources` (
    `id` INT NOT NULL AUTO_INCREMENT  COMMENT '主键',
-   `source_url` VARCHAR(255) NOT NULL COMMENT 'RSS 订阅源 URL',
-   `source_name` VARCHAR(100) DEFAULT NULL COMMENT '订阅源名称',
+   `source_url` VARCHAR(2048) NOT NULL COMMENT 'RSS 订阅源 URL',
+   `source_name` VARCHAR(2048) DEFAULT NULL COMMENT '订阅源名称',
    `description` TEXT COMMENT '订阅源描述',
    `last_checked` DATETIME COMMENT '上次检查时间',
    PRIMARY KEY (`id`)
@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS `rss_sources` (
 CREATE TABLE IF NOT EXISTS `rss_items` (
      `id` INT AUTO_INCREMENT COMMENT '主键',
      `source_id` INT NOT NULL COMMENT 'RSS 订阅源 id',
-     `title` VARCHAR(255) NOT NULL COMMENT '消息标题',
-     `link` VARCHAR(255) NOT NULL COMMENT '消息链接',
+     `title` VARCHAR(2048) NOT NULL COMMENT '消息标题',
+     `link` VARCHAR(2048) NOT NULL COMMENT '消息链接',
      `pub_date` DATETIME COMMENT '发布时间',
      `description` TEXT COMMENT '消息描述',
      PRIMARY KEY (`id`)
