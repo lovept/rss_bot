@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  rss_bot:
+    image: rss_bot
+    container_name: rss_bot
+    ports:
+      - "6666:6666"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ${PWD}/log:/app/log
+    restart: always
