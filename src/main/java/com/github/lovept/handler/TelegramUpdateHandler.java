@@ -72,13 +72,13 @@ public class TelegramUpdateHandler {
             QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
             queryWrapper.eq("source_id", sourceId);
             queryWrapper.eq("telegram_id", chatId);
-            List<UserSubscription> subscriptions = userSubscriptionMapper.selectList(queryWrapper);
+            UserSubscription userSubscription = userSubscriptionMapper.selectOne(queryWrapper);
 
-            if (subscriptions.isEmpty()) {
-                sendMessage(chatId, "You don't have any subscriptions.", false);
+            if (userSubscription == null) {
+                sendMessage(chatId, "You didn't subscribe to this.", false);
                 return;
             }
-            userSubscriptionMapper.deleteByIds(subscriptions);
+            userSubscriptionMapper.deleteById(userSubscription.getSourceId());
             sendMessage(chatId, "Subscription deleted.", true);
         } else {
             sendMessage(chatId, "This command is wrong.", true);
