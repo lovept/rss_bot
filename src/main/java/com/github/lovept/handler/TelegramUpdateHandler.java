@@ -186,6 +186,7 @@ public class TelegramUpdateHandler {
     private void processUserSubscription(User user, RssSource source) {
         QueryWrapper<UserSubscription> userSubscriptionQueryWrapper = new QueryWrapper<>();
         userSubscriptionQueryWrapper.eq("source_id", source.getId());
+        userSubscriptionQueryWrapper.eq("telegram_id", user.getTelegramId());
 
         if (userSubscriptionMapper.selectOne(userSubscriptionQueryWrapper) == null) {
             UserSubscription userSubscription = UserSubscription.builder()
