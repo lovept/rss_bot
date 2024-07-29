@@ -147,7 +147,7 @@ public class TelegramUpdateHandler {
         List<RssSource> rssSourceList = rssSourceMapper.selectList(rssSourceQueryWrapper);
 
         String subscriptionNames = rssSourceList.stream()
-                .map(rssSource -> rssSource.getId() + ". " + rssSource.getSourceName())
+                .map(rssSource -> "\\[" + rssSource.getId() + "] " + "[" + rssSource.getSourceName() + "]" + "(" + rssSource.getSourceUrl() + ")")
                 .collect(Collectors.joining("\n"));
 
         sendMessage(chatId, subscriptionNames, true);
@@ -168,8 +168,7 @@ public class TelegramUpdateHandler {
                     .parseMode(ParseMode.Markdown)
                     .replyToMessageId(update.message().messageId());
         } else {
-            sendMessage = new SendMessage(chatId, text)
-                    .parseMode(ParseMode.Markdown);
+            sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
         }
 
         bot.execute(sendMessage);

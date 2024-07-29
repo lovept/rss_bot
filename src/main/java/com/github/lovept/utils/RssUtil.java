@@ -50,7 +50,6 @@ public class RssUtil {
                         .link(entry.getLink())
                         .pubDate(entry.getPublishedDate() == null ? entry.getUpdatedDate() : entry.getPublishedDate())
                         .description(entry.getDescription() == null ? "" : entry.getDescription().getValue())
-                        //.guid(entry.getGenerator())
                         .build())
                 .toList();
     }
