@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `rss_sources` (
    `id` INT NOT NULL AUTO_INCREMENT  COMMENT '主键',
    `source_url` VARCHAR(2048) NOT NULL COMMENT 'RSS 订阅源 URL',
    `source_name` VARCHAR(2048) DEFAULT NULL COMMENT '订阅源名称',
-   `description` TEXT COMMENT '订阅源描述',
+   `description` LONGTEXT COMMENT '订阅源描述',
    `last_checked` DATETIME COMMENT '上次检查时间',
    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT 'RSS 订阅源信息';
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS `rss_items` (
      `title` VARCHAR(2048) NOT NULL COMMENT '消息标题',
      `link` VARCHAR(2048) NOT NULL COMMENT '消息链接',
      `pub_date` DATETIME COMMENT '发布时间',
-     `description` TEXT COMMENT '消息描述',
+     `description` LONGTEXT COMMENT '消息描述',
      PRIMARY KEY (`id`)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT 'RSS 消息信息';
 
