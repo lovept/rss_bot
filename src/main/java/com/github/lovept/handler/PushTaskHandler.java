@@ -66,6 +66,7 @@ public class PushTaskHandler{
                 // 根据用户的最后推送时间 推送信息
                 Date notifiedAt = y.getNotifiedAt();
                 List<RssItem> items = rssItemList.stream()
+                        .filter(z -> z.getPubDate() != null)
                         .filter(z -> z.getPubDate().after(notifiedAt))
                         .sorted(Comparator.comparing(RssItem::getPubDate))
                         .toList();
