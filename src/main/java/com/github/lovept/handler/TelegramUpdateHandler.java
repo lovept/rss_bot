@@ -78,7 +78,7 @@ public class TelegramUpdateHandler {
                 sendMessage(chatId, "You didn't subscribe to this.", false);
                 return;
             }
-            userSubscriptionMapper.deleteById(userSubscription.getSourceId());
+            userSubscriptionMapper.delete(queryWrapper);
             sendMessage(chatId, "Subscription deleted.", true);
         } else {
             sendMessage(chatId, "This command is wrong.", true);
