@@ -147,7 +147,7 @@ public class TelegramUpdateHandler {
         List<RssSource> rssSourceList = rssSourceMapper.selectList(rssSourceQueryWrapper);
 
         String subscriptionNames = rssSourceList.stream()
-                .map(rssSource -> "\\[" + rssSource.getId() + "] " + "[" + rssSource.getSourceName() + "]" + "(" + rssSource.getSourceUrl() + ")")
+                .map(rssSource -> "\\[`" + rssSource.getId() + "`] " + "[" + rssSource.getSourceName() + "]" + "(" + rssSource.getSourceUrl() + ")")
                 .collect(Collectors.joining("\n"));
 
         sendMessage(chatId, subscriptionNames, true);
