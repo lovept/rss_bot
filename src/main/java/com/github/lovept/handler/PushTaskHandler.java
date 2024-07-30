@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Log4j2
 @Component
-public class PushTaskHandler{
+public class PushTaskHandler {
 
 
     @Resource
@@ -47,64 +47,74 @@ public class PushTaskHandler{
 
     public void pushMessage() {
         List<RssSource> sourceList = rssSourceMapper.selectList(null);
-        sourceList.forEach(x -> {
-            // 获取rssItem
-            HttpURLConnection connection = HttpUtil.getHttpURLConnection(x.getSourceUrl());
-            List<RssItem> rssItemList;
-            try {
-                rssItemList = RssUtil.buildRssItem(connection.getInputStream(), x.getId());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            // 查询订阅了此源的用户
-            QueryWrapper<UserSubscription> userSubscriptionQueryWrapper = new QueryWrapper<>();
-            userSubscriptionQueryWrapper.eq("source_id", x.getId());
-            List<UserSubscription> subscriptionList = userSubscriptionMapper.selectList(userSubscriptionQueryWrapper);
-            // 根据用户的推送时间,推送rssItem
-            subscriptionList.forEach(y -> {
-                // 根据用户的最后推送时间 推送信息
-                Date notifiedAt = y.getNotifiedAt();
-                List<RssItem> items = rssItemList.stream()
-                        .filter(z -> z.getPubDate() != null)
-                        .filter(z -> z.getPubDate().after(notifiedAt))
-                        .sorted(Comparator.comparing(RssItem::getPubDate))
-                        .toList();
-                items.forEach(i -> {
-
-                    String sendText = "[" + i.getTitle() + "]" + "(" + i.getLink() + ")";
-                    sendMessage(y.getTelegramId(), sendText);
-                });
-                y.setNotifiedAt(new Date());
-                QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
-                queryWrapper.eq("source_id", x.getId());
-                queryWrapper.eq("telegram_id", y.getTelegramId());
-                userSubscriptionMapper.update(y,queryWrapper);
-            });
-
-            rssItemList.forEach(this::saveRssItem);
-
-        });
+        sourceList.parallelStream().forEach(this::processSource);
     }
 
+    private void processSource(RssSource source) {
+        List<RssItem> rssItemList = fetchRssItems(source);
+        if (rssItemList == null) {
+            return;
+        }
+
+        List<UserSubscription> subscriptionList = fetchUserSubscriptions(source);
+        subscriptionList.forEach(subscription -> processSubscription(subscription, rssItemList, source.getId()));
+
+        rssItemList.forEach(this::saveRssItem);
+    }
+
+    private List<RssItem> fetchRssItems(RssSource source) {
+        HttpURLConnection connection = HttpUtil.getHttpURLConnection(source.getSourceUrl());
+        try {
+            return RssUtil.buildRssItem(connection.getInputStream(), source.getId());
+        } catch (IOException e) {
+            log.error("Error fetching RSS items {}: {}", source.getSourceUrl(), e.getMessage());
+            return null;
+        }
+    }
+
+    private List<UserSubscription> fetchUserSubscriptions(RssSource source) {
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("source_id", source.getId());
+        return userSubscriptionMapper.selectList(queryWrapper);
+    }
+
+    private void processSubscription(UserSubscription subscription, List<RssItem> rssItemList, Integer sourceId) {
+        Date notifiedAt = subscription.getNotifiedAt();
+        List<RssItem> items = rssItemList.stream()
+                .filter(item -> item.getPubDate() != null && item.getPubDate().after(notifiedAt))
+                .sorted(Comparator.comparing(RssItem::getPubDate))
+                .toList();
+
+        items.forEach(item -> sendMessage(subscription.getTelegramId(), formatMessage(item)));
+
+        updateSubscriptionNotifiedAt(subscription, sourceId);
+    }
+
+    private String formatMessage(RssItem item) {
+        return "[" + item.getTitle() + "](" + item.getLink() + ")";
+    }
 
     private void sendMessage(long chatId, String text) {
-        SendMessage sendMessage = new SendMessage(chatId, text)
-                .parseMode(ParseMode.Markdown);
+        SendMessage sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
         bot.execute(sendMessage);
     }
 
+    private void updateSubscriptionNotifiedAt(UserSubscription subscription, Integer sourceId) {
+        subscription.setNotifiedAt(new Date());
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("source_id", sourceId);
+        queryWrapper.eq("telegram_id", subscription.getTelegramId());
+        userSubscriptionMapper.update(subscription, queryWrapper);
+    }
 
     private void saveRssItem(RssItem item) {
         QueryWrapper<RssItem> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("link", item.getLink());
         queryWrapper.eq("title", item.getTitle());
-        RssItem rssItem = rssItemMapper.selectOne(queryWrapper);
-        if (rssItem != null) {
-            return;
+        RssItem existingItem = rssItemMapper.selectOne(queryWrapper);
+        if (existingItem == null) {
+            rssItemMapper.insert(item);
         }
-        rssItemMapper.insert(item);
     }
-
 
 }

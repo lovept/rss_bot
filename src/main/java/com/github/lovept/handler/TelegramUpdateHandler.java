@@ -35,7 +35,6 @@ public class TelegramUpdateHandler {
 
     private final UserMapper userMapper;
 
-
     private final UserSubscriptionMapper userSubscriptionMapper;
 
 
@@ -49,20 +48,120 @@ public class TelegramUpdateHandler {
         initializeCommands();
     }
 
+
+    public void handler() {
+        long chatId = update.message().chat().id();
+        String commandText = update.message().text();
+
+
+        String regex = "/(\\S+)(\\s(https://\\S+))?";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(commandText);
+
+        if (matcher.find()) {
+            BotCommand command = commandMap.getOrDefault(matcher.group(1), commandMap.get("start"));
+            command.accept(bot, update);
+        } else {
+            sendMessage(chatId, "There is no such command.", true);
+        }
+
+    }
+
     private void initializeCommands() {
         commandMap.put("start", (bot, update) -> startCommand());
         commandMap.put("list", (bot, update) -> listCommand());
         commandMap.put("sub", (bot, update) -> subCommand());
-        commandMap.put("delete", (bot, update) -> deleteCommand());
+        commandMap.put("unsub", (bot, update) -> unsubCommand());
         commandMap.put("help", (bot, update) -> helpCommand());
     }
 
-    private void deleteCommand() {
+
+    private void startCommand() {
+        long chatId = update.message().chat().id();
+
+        String firstName = update.message().from().firstName();
+        String lastName = update.message().from().lastName();
+        String username = (firstName == null ? "" : firstName) + (lastName == null ? "" : lastName);
+
+        User user = User.builder()
+                .telegramId(chatId)
+                .username(username)
+                .build();
+
+        userMapper.insertOrUpdate(user);
+        sendMessage(chatId, "You're already registered.", true);
+    }
+
+
+    private void listCommand() {
+        long chatId = update.message().chat().id();
+        User user = fetchUser(chatId);
+        if (user == null) {
+            sendMessage(chatId, "You're not registered.", false);
+            return;
+        }
+
+        List<UserSubscription> userSubscriptions = fetchUserSubscriptions(chatId);
+
+        // 获取所有的 sourceId
+        List<Integer> sourceIds = userSubscriptions.stream()
+                .map(UserSubscription::getSourceId)
+                .collect(Collectors.toList());
+        if (sourceIds.isEmpty()) {
+            sendMessage(chatId, "You haven't subscribed to anything yet.", false);
+            return;
+        }
+        // 查询所有的订阅源信息
+        List<RssSource> rssSourceList = fetchRssSources(sourceIds);
+
+        String subscriptionNames = rssSourceList.stream()
+                .map(rssSource -> "\\[`" + rssSource.getId() + "`] " + "[" + rssSource.getSourceName() + "]" + "(" + rssSource.getSourceUrl() + ")")
+                .collect(Collectors.joining("\n"));
+
+        sendMessage(chatId, subscriptionNames, true);
+    }
+
+
+    private void subCommand() {
+        long chatId = update.message().chat().id();
+        User user = fetchUser(chatId);
+
+        if (user == null) {
+            sendMessage(chatId, "You haven't subscribed to anything yet.", false);
+            return;
+        }
+
+        String commandText = update.message().text();
+
+        String regex = "/(\\S+)\\s(https://\\S+)";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(commandText);
+
+        if (!matcher.find()) {
+            sendMessage(chatId, "There's something wrong with the path you entered.", true);
+            return;
+        }
+
+        String sourceUrl = matcher.group(2);
+        RssSource source = fetchRssSource(sourceUrl);
+
+        if (source != null) {
+            processUserSubscription(user, source);
+            sendMessage(chatId, "This site is subscribed!", true);
+            return;
+        }
+
+        saveFeedInfo(sourceUrl, chatId);
+
+    }
+
+
+    private void unsubCommand() {
         long chatId = update.message().chat().id();
         // 查询该用户的订阅
         String commandText = update.message().text();
 
-        String regex = "/delete\\s+(\\d+)";
+        String regex = "/unsub\\s+(\\d+)";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(commandText);
 
@@ -92,150 +191,39 @@ public class TelegramUpdateHandler {
         String helpResult = """
                 /sub - add subscription -> [/sub https://example.com]
                 /list - get a list of my subscriptions
-                /delete - delete subscription -> [/delete 1]
+                /unsub - unsubscribe -> [/unsub 1]
                 /help - get this help""";
 
         sendMessage(chatId, helpResult, true);
     }
 
 
-    public void handler() {
-        long chatId = update.message().chat().id();
-        String commandText = update.message().text();
 
-
-        String regex = "/(\\S+)(\\s(https://\\S+))?";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(commandText);
-
-        if (matcher.find()) {
-            BotCommand command = commandMap.getOrDefault(matcher.group(1), commandMap.get("start"));
-            command.accept(bot, update);
-        } else {
-            sendMessage(chatId, "There is no such command.", true);
+    private void sendMessage(long chatId, String text, boolean replyToMessage) {
+        SendMessage sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
+        if (replyToMessage) {
+            sendMessage.replyToMessageId(update.message().messageId());
         }
-
-    }
-
-
-    private void listCommand() {
-        long chatId = update.message().chat().id();
-        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
-        userQueryWrapper.eq("telegram_id", chatId);
-
-        User user = userMapper.selectOne(userQueryWrapper);
-        if (user == null) {
-            sendMessage(chatId, "You're not registered.", false);
-            return;
-        }
-
-        QueryWrapper<UserSubscription> userSubscriptionQueryWrapper = new QueryWrapper<>();
-        userSubscriptionQueryWrapper.eq("telegram_id", chatId);
-        List<UserSubscription> subscriptionList = userSubscriptionMapper.selectList(userSubscriptionQueryWrapper);
-
-        // 获取所有的 sourceId
-        List<Integer> sourceIds = subscriptionList.stream()
-                .map(UserSubscription::getSourceId)
-                .collect(Collectors.toList());
-        if (sourceIds.isEmpty()) {
-            sendMessage(chatId, "You haven't subscribed to anything yet.", false);
-            return;
-        }
-        // 查询所有的订阅源信息
-        QueryWrapper<RssSource> rssSourceQueryWrapper = new QueryWrapper<>();
-        rssSourceQueryWrapper.in("id", sourceIds);
-        List<RssSource> rssSourceList = rssSourceMapper.selectList(rssSourceQueryWrapper);
-
-        String subscriptionNames = rssSourceList.stream()
-                .map(rssSource -> "\\[`" + rssSource.getId() + "`] " + "[" + rssSource.getSourceName() + "]" + "(" + rssSource.getSourceUrl() + ")")
-                .collect(Collectors.joining("\n"));
-
-        sendMessage(chatId, subscriptionNames, true);
-    }
-
-    private User queryUser(long chatId) {
-        // 查询用户表是否注册
-        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
-        userQueryWrapper.eq("telegram_id", chatId);
-
-        return userMapper.selectOne(userQueryWrapper);
-    }
-
-    private void sendMessage(long chatId, String text, boolean replayToMessage) {
-        SendMessage sendMessage;
-        if (replayToMessage) {
-            sendMessage = new SendMessage(chatId, text)
-                    .parseMode(ParseMode.Markdown)
-                    .replyToMessageId(update.message().messageId());
-        } else {
-            sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
-        }
-
         bot.execute(sendMessage);
     }
 
 
-    private RssSource queryRssSource(String sourceUrl) {
-        QueryWrapper<RssSource> rssSourceQueryWrapper = new QueryWrapper<>();
-        rssSourceQueryWrapper.eq("source_url", sourceUrl);
-        return rssSourceMapper.selectOne(rssSourceQueryWrapper);
-    }
-
 
     private void processUserSubscription(User user, RssSource source) {
-        QueryWrapper<UserSubscription> userSubscriptionQueryWrapper = new QueryWrapper<>();
-        userSubscriptionQueryWrapper.eq("source_id", source.getId());
-        userSubscriptionQueryWrapper.eq("telegram_id", user.getTelegramId());
+        UserSubscription subscription = fetchUserSubscription(user.getTelegramId(), source.getId());
 
-        if (userSubscriptionMapper.selectOne(userSubscriptionQueryWrapper) == null) {
-            UserSubscription userSubscription = UserSubscription.builder()
-                    .telegramId(user.getTelegramId())
-                    .sourceId(source.getId())
-                    .subscribedAt(new Date())
-                    .notifiedAt(getDefaultDate())
-                    .build();
-
-            userSubscriptionMapper.insert(userSubscription);
-        }
-    }
-
-    private Date getDefaultDate() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-        return calendar.getTime();
-    }
-
-    private void subCommand() {
-        long chatId = update.message().chat().id();
-        User user = queryUser(chatId);
-
-        if (user == null) {
-            sendMessage(chatId, "You haven't subscribed to anything yet.", false);
+        if (subscription != null) {
             return;
         }
 
-        String commandText = update.message().text();
+        UserSubscription userSubscription = UserSubscription.builder()
+                .telegramId(user.getTelegramId())
+                .sourceId(source.getId())
+                .subscribedAt(new Date())
+                .notifiedAt(getDefaultDate())
+                .build();
 
-        String regex = "/(\\S+)\\s(https://\\S+)";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(commandText);
-
-        if (!matcher.find()) {
-            sendMessage(chatId, "There's something wrong with the path you entered.", true);
-            return;
-        }
-
-        String sourceUrl = matcher.group(2);
-        RssSource source = queryRssSource(sourceUrl);
-
-        if (source != null) {
-            processUserSubscription(user, source);
-            sendMessage(chatId, "This site is subscribed!", true);
-            return;
-        }
-
-        saveFeedInfo(sourceUrl, chatId);
-
+        userSubscriptionMapper.insert(userSubscription);
     }
 
 
@@ -259,20 +247,11 @@ public class TelegramUpdateHandler {
         sendMessage(chatId, "Subscription added successfully!", true);
     }
 
-    private void startCommand() {
-        long chatId = update.message().chat().id();
 
-        String firstName = update.message().from().firstName();
-        String lastName = update.message().from().lastName();
-        String username = (firstName == null ? "" : firstName) + (lastName == null ? "" : lastName);
-
-        User user = User.builder()
-                .telegramId(chatId)
-                .username(username)
-                .build();
-
-        userMapper.insertOrUpdate(user);
-        sendMessage(chatId, "You're already registered.", true);
+    private Date getDefaultDate() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+        return calendar.getTime();
     }
 
 
@@ -321,5 +300,40 @@ public class TelegramUpdateHandler {
         //SendResponse response = bot.execute(sendMessage);
     }
 
+
+    private List<UserSubscription> fetchUserSubscriptions(long chatId) {
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("telegram_id", chatId);
+        return userSubscriptionMapper.selectList(queryWrapper);
+    }
+
+    private UserSubscription fetchUserSubscription(long chatId, Integer sourceId) {
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("telegram_id", chatId);
+        queryWrapper.eq("source_id", sourceId);
+        return userSubscriptionMapper.selectOne(queryWrapper);
+    }
+
+    private List<RssSource> fetchRssSources(List<Integer> sourceIds) {
+        QueryWrapper<RssSource> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", sourceIds);
+        return rssSourceMapper.selectList(queryWrapper);
+    }
+
+
+    private User fetchUser(long chatId) {
+        // 查询用户表是否注册
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.eq("telegram_id", chatId);
+
+        return userMapper.selectOne(userQueryWrapper);
+    }
+
+
+    private RssSource fetchRssSource(String sourceUrl) {
+        QueryWrapper<RssSource> rssSourceQueryWrapper = new QueryWrapper<>();
+        rssSourceQueryWrapper.eq("source_url", sourceUrl);
+        return rssSourceMapper.selectOne(rssSourceQueryWrapper);
+    }
 
 }
