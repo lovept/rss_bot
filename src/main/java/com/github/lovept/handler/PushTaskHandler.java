@@ -15,12 +15,16 @@ import com.pengrad.telegrambot.request.SendMessage;
 import jakarta.annotation.Resource;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 /**
@@ -31,7 +35,6 @@ import java.util.List;
 @Log4j2
 @Component
 public class PushTaskHandler {
-
 
     @Resource
     private RssSourceMapper rssSourceMapper;
@@ -45,6 +48,11 @@ public class PushTaskHandler {
     @Resource
     private TelegramBot bot;
 
+    @Resource
+    private TransactionTemplate transactionTemplate;
+
+    private final Lock lock = new ReentrantLock();
+
     public void pushMessage() {
         List<RssSource> sourceList = rssSourceMapper.selectList(null);
         sourceList.parallelStream().forEach(this::processSource);
@@ -57,7 +65,10 @@ public class PushTaskHandler {
         }
 
         List<UserSubscription> subscriptionList = fetchUserSubscriptions(source);
-        subscriptionList.forEach(subscription -> processSubscription(subscription, rssItemList, source.getId()));
+        subscriptionList.forEach(subscription -> transactionTemplate.execute(status -> {
+            processSubscription(subscription, rssItemList, source.getId());
+            return null;
+        }));
 
         rssItemList.forEach(this::saveRssItem);
     }
@@ -79,15 +90,20 @@ public class PushTaskHandler {
     }
 
     private void processSubscription(UserSubscription subscription, List<RssItem> rssItemList, Integer sourceId) {
-        Date notifiedAt = subscription.getNotifiedAt();
-        List<RssItem> items = rssItemList.stream()
-                .filter(item -> item.getPubDate() != null && item.getPubDate().after(notifiedAt))
-                .sorted(Comparator.comparing(RssItem::getPubDate))
-                .toList();
+        lock.lock();
+        try {
+            Date notifiedAt = subscription.getNotifiedAt();
+            List<RssItem> items = rssItemList.stream()
+                    .filter(item -> item.getPubDate() != null && item.getPubDate().after(notifiedAt))
+                    .sorted(Comparator.comparing(RssItem::getPubDate))
+                    .toList();
 
-        items.forEach(item -> sendMessage(subscription.getTelegramId(), formatMessage(item)));
+            items.forEach(item -> sendMessage(subscription.getTelegramId(), formatMessage(item)));
 
-        updateSubscriptionNotifiedAt(subscription, sourceId);
+            updateSubscriptionNotifiedAt(subscription, sourceId);
+        } finally {
+            lock.unlock();
+        }
     }
 
     private String formatMessage(RssItem item) {
@@ -116,5 +132,4 @@ public class PushTaskHandler {
             rssItemMapper.insert(item);
         }
     }
-
 }
