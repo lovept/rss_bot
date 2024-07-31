@@ -25,6 +25,7 @@ import java.util.List;
 @Slf4j
 @Configuration
 public class TelegramBotInitializer {
+
     @Resource
     private TelegramBotConfig config;
 

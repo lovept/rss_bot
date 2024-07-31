@@ -9,6 +9,8 @@ import com.rometools.rome.io.XmlReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 
@@ -40,17 +42,9 @@ public class RssUtil {
     }
 
 
-    public static List<RssItem> buildRssItem(InputStream is, Integer sourceId) {
-        SyndFeed feed = buildSyndFeed(is);
-        return feed.getEntries()
-                .stream()
-                .map(entry -> RssItem.builder()
-                        .sourceId(sourceId)
-                        .title(entry.getTitle().replaceAll("\\[", "").replaceAll("]", ""))
-                        .link(entry.getLink().startsWith("http") ? entry.getLink() : "https:" + entry.getLink())
-                        .pubDate(entry.getPublishedDate() == null ? entry.getUpdatedDate() : entry.getPublishedDate())
-                        .description(entry.getDescription() == null ? "" : entry.getDescription().getValue())
-                        .build())
-                .toList();
+    public static Date getDefaultDate() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+        return calendar.getTime();
     }
 }

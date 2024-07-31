@@ -220,7 +220,7 @@ public class TelegramUpdateHandler {
                 .telegramId(user.getTelegramId())
                 .sourceId(source.getId())
                 .subscribedAt(new Date())
-                .notifiedAt(getDefaultDate())
+                .notifiedAt(RssUtil.getDefaultDate())
                 .build();
 
         userSubscriptionMapper.insert(userSubscription);
@@ -241,17 +241,10 @@ public class TelegramUpdateHandler {
                 .telegramId(chatId)
                 .sourceId(rssSource.getId())
                 .subscribedAt(new Date())
-                .notifiedAt(getDefaultDate())
+                .notifiedAt(RssUtil.getDefaultDate())
                 .build();
         userSubscriptionMapper.insert(userSubscription);
         sendMessage(chatId, "Subscription added successfully!", true);
-    }
-
-
-    private Date getDefaultDate() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-        return calendar.getTime();
     }
 
 

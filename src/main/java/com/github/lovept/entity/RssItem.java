@@ -22,6 +22,7 @@ public class RssItem {
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
 
+
     /**
      * RSS 订阅源 id
      */
@@ -39,6 +40,10 @@ public class RssItem {
      */
     @TableField("link")
     private String link;
+
+
+    @TableField("link_hash")
+    private String linkHash;
 
     /**
      * 发布时间

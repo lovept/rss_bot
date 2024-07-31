@@ -1,5 +1,6 @@
 package com.github.lovept.rss;
 
+import com.github.lovept.utils.HashUtil;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
@@ -82,5 +83,15 @@ public class RssTest {
         //
         //// 调用异步方法
         //executorService.asyncUpdateMessage(rssSource);
+    }
+
+    @Test
+    public void t4() {
+        // 50bdff5fef91dd9c6f817c4de10ba5bf94a4fd37e3797828f46aaa74d3dd0feb
+        //String s = HashUtil.sha256("https://www.douban.com/group/topic/309016276/");
+
+        //
+        String s = HashUtil.sha256("https://www.douban.com/group/topic/309013561/");
+        System.out.println(s);
     }
 }

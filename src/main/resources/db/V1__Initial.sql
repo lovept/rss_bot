@@ -12,9 +12,11 @@ CREATE TABLE IF NOT EXISTS `rss_items` (
      `source_id` INT NOT NULL COMMENT 'RSS 订阅源 id',
      `title` VARCHAR(2048) NOT NULL COMMENT '消息标题',
      `link` VARCHAR(2048) NOT NULL COMMENT '消息链接',
+     `link_hash` CHAR(64) NOT NULL COMMENT 'link hash',
      `pub_date` DATETIME COMMENT '发布时间',
      `description` LONGTEXT COMMENT '消息描述',
-     PRIMARY KEY (`id`)
+     PRIMARY KEY (`id`),
+     UNIQUE KEY `unique_link_hash` (`link_hash`)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT 'RSS 消息信息';
 
 CREATE TABLE IF NOT EXISTS `users` (
