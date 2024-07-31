@@ -109,7 +109,7 @@ public class RssHandler {
         try {
             rssItemMapper.insert(item);
         } catch (Exception e) {
-            log.error("Item already exists: {}", item.getLink());
+            //log.error("Item already exists: {}", item.getLink());
         }
     }
 
