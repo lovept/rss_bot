@@ -47,7 +47,7 @@ public class RssUtil {
                 .map(entry -> RssItem.builder()
                         .sourceId(sourceId)
                         .title(entry.getTitle().replaceAll("\\[", "").replaceAll("]", ""))
-                        .link(entry.getLink())
+                        .link(entry.getLink().startsWith("http") ? entry.getLink() : "https:" + entry.getLink())
                         .pubDate(entry.getPublishedDate() == null ? entry.getUpdatedDate() : entry.getPublishedDate())
                         .description(entry.getDescription() == null ? "" : entry.getDescription().getValue())
                         .build())
