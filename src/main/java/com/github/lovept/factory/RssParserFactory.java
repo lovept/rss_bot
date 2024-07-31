@@ -2,6 +2,7 @@ package com.github.lovept.factory;
 
 import com.github.lovept.service.RssParser;
 import com.github.lovept.service.impl.DefaultRssParser;
+import com.github.lovept.service.impl.NodeSeekRssParser;
 import com.github.lovept.service.impl.SouthPlusRssParser;
 
 /**
@@ -11,7 +12,9 @@ public class RssParserFactory {
     public static RssParser getParser(String sourceUrl) {
         if (sourceUrl.contains("www.summer-plus.net")) {
             return new SouthPlusRssParser();
-        } else {
+        } else if (sourceUrl.contains("www.nodeseek.com")) {
+            return new NodeSeekRssParser();
+        }else {
             return new DefaultRssParser();
         }
     }

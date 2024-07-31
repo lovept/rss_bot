@@ -12,9 +12,9 @@ import java.util.List;
 /**
  * @author lovept
  * @date 2024/7/23 20:50
- * @description 南+
+ * @description NodeSeek
  */
-public class SouthPlusRssParser implements RssParser {
+public class NodeSeekRssParser implements RssParser {
     @Override
     public List<RssItem> parse(InputStream is, Integer sourceId) {
         SyndFeed feed = RssUtil.buildSyndFeed(is);
@@ -24,9 +24,9 @@ public class SouthPlusRssParser implements RssParser {
                 .map(entry -> RssItem.builder()
                         .sourceId(sourceId)
                         .title(entry.getTitle().replaceAll("\\[", "").replaceAll("]", ""))
-                        .link("https:" + entry.getLink())
-                        .linkHash(HashUtil.sha256("https:" + entry.getLink()))
-                        .pubDate(entry.getPublishedDate() == null ? entry.getUpdatedDate() : entry.getPublishedDate())
+                        .link(entry.getLink())
+                        .linkHash(HashUtil.sha256(entry.getLink()))
+                        .pubDate(entry.getUpdatedDate())
                         .description(entry.getDescription() == null ? "" : entry.getDescription().getValue())
                         .build())
                 .toList();
