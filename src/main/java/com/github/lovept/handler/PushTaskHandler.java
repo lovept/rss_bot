@@ -20,9 +20,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -94,21 +96,38 @@ public class PushTaskHandler {
         lock.lock();
         try {
             Date notifiedAt = subscription.getNotifiedAt();
-            List<RssItem> items = rssItemList.stream()
-                    .filter(item -> item.getPubDate() != null && item.getPubDate().after(notifiedAt))
-                    .sorted(Comparator.comparing(RssItem::getPubDate))
-                    .toList();
+
+            List<RssItem> items = new java.util.ArrayList<>(rssItemList.stream()
+                    .filter(item -> (item.getPubDate() != null && item.getPubDate().after(notifiedAt))
+                            || (item.getPubDate() == null && !isHave(item)))
+                    .sorted(Comparator.comparing(RssItem::getPubDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList());
+
 
             // 取出items中最大的PubDate
-            if (!items.isEmpty()) {
-                Date latestPubDate = items.getLast().getPubDate();
-                subscription.setNotifiedAt(latestPubDate);
-            }
+            Date latestPubDate = items.stream()
+                    .map(RssItem::getPubDate)
+                    .filter(Objects::nonNull)
+                    .max(Date::compareTo)
+                    .orElse(new Date());
+
+            subscription.setNotifiedAt(latestPubDate);
             items.forEach(item -> sendMessage(subscription.getTelegramId(), formatMessage(item)));
             updateSubscriptionNotifiedAt(subscription, sourceId);
         } finally {
             lock.unlock();
         }
+    }
+
+    private boolean isHave(RssItem rssItem) {
+        return fetchRssItem(rssItem) != null;
+    }
+
+    private RssItem fetchRssItem(RssItem rssItem) {
+        QueryWrapper<RssItem> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("source_id", rssItem.getSourceId());
+        queryWrapper.eq("link", rssItem.getLink());
+        return rssItemMapper.selectOne(queryWrapper);
     }
 
     private String formatMessage(RssItem item) {
