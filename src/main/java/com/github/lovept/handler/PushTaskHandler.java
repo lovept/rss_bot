@@ -74,6 +74,7 @@ public class PushTaskHandler {
     }
 
     private List<RssItem> fetchRssItems(RssSource source) {
+        log.info("fetch rss -> {}", source.getSourceUrl());
         HttpURLConnection connection = HttpUtil.getHttpURLConnection(source.getSourceUrl());
         try {
             return RssUtil.buildRssItem(connection.getInputStream(), source.getId());
@@ -98,8 +99,12 @@ public class PushTaskHandler {
                     .sorted(Comparator.comparing(RssItem::getPubDate))
                     .toList();
 
+            // 取出items中最大的PubDate
+            if (!items.isEmpty()) {
+                Date latestPubDate = items.getLast().getPubDate();
+                subscription.setNotifiedAt(latestPubDate);
+            }
             items.forEach(item -> sendMessage(subscription.getTelegramId(), formatMessage(item)));
-
             updateSubscriptionNotifiedAt(subscription, sourceId);
         } finally {
             lock.unlock();
@@ -116,7 +121,6 @@ public class PushTaskHandler {
     }
 
     private void updateSubscriptionNotifiedAt(UserSubscription subscription, Integer sourceId) {
-        subscription.setNotifiedAt(new Date());
         QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("source_id", sourceId);
         queryWrapper.eq("telegram_id", subscription.getTelegramId());
