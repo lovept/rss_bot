@@ -20,6 +20,7 @@ public class SouthPlusRssParser implements RssParser {
         SyndFeed feed = RssUtil.buildSyndFeed(is);
         return feed.getEntries()
                 .stream()
+                .limit(50)
                 .map(entry -> RssItem.builder()
                         .sourceId(sourceId)
                         .title(entry.getTitle().replaceAll("\\[", "").replaceAll("]", ""))
