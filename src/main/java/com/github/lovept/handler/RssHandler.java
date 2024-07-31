@@ -82,6 +82,10 @@ public class RssHandler {
                     .sorted(Comparator.comparing(RssItem::getPubDate, Comparator.nullsLast(Comparator.naturalOrder())))
                     .toList());
 
+            if (items.isEmpty()) {
+                return;
+            }
+
             Date latestPubDate = items.stream()
                     .map(RssItem::getPubDate)
                     .filter(Objects::nonNull)
