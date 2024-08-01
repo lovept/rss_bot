@@ -23,4 +23,5 @@ server:
 
 bot:
   token: your_bot_token
-  cron: "*/30 * * * * ?"
+  cron: "*/59 * * * * ?"
+  max-retries: 3
