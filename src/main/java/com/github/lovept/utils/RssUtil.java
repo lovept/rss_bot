@@ -32,6 +32,9 @@ public class RssUtil {
 
     public static SyndFeed buildSyndFeed(String url) {
         HttpURLConnection con = HttpUtil.getHttpURLConnection(url);
+        if (con == null) {
+            return null;
+        }
         SyndFeed feed;
         try (InputStream is = con.getInputStream()) {
             feed = new SyndFeedInput().build(new XmlReader(is));

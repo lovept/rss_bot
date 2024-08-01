@@ -254,6 +254,11 @@ public class TelegramUpdateHandler {
 
     private void saveFeedInfo(String url, long chatId) {
         SyndFeed feed = RssUtil.buildSyndFeed(url);
+        if (feed == null) {
+            sendMessage(chatId, "This link is not supported.", true);
+            log.error("This link is not supported --> {}", url);
+            return;
+        }
         RssSource rssSource = RssSource.builder()
                 .sourceUrl(url)
                 .sourceName(feed.getTitle())
