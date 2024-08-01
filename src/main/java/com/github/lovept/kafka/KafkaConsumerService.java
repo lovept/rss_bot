@@ -62,7 +62,11 @@ public class KafkaConsumerService {
 
             long chatId = Long.parseLong(parts[0].replaceAll("\"", ""));
 
-            sendTelegramMessage(chatId, parts[1]);
+            String text = parts[1];
+            if (text.endsWith("\"")) {
+                text = text.substring(0, text.lastIndexOf("\""));
+            }
+            sendTelegramMessage(chatId, text);
         }
     }
 
