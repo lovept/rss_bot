@@ -9,10 +9,18 @@ spring:
   flyway:
     locations: classpath:db
     enabled: true
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: rss_bot_group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 server:
   port: 6666
 
 bot:
   token: your_bot_token
-  # update interval
-  cron: "*/30 * * * * ?"
+  cron: "*/10 * * * * ?"

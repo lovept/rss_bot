@@ -31,6 +31,7 @@
         <java-telegram-bot-api>7.7.0</java-telegram-bot-api>
         <rome.version>2.1.0</rome.version>
         <flyway.version>10.16.0</flyway.version>
+        <spring-kafka.version>3.2.2</spring-kafka.version>
     </properties>
     <dependencies>
         <dependency>
@@ -124,6 +125,12 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
             <version>${flyway.version}</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.kafka/spring-kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+            <version>${spring-kafka.version}</version>
         </dependency>
 
     </dependencies>

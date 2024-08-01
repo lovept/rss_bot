@@ -5,14 +5,12 @@ import com.github.lovept.entity.RssItem;
 import com.github.lovept.entity.RssSource;
 import com.github.lovept.entity.UserSubscription;
 import com.github.lovept.factory.RssParserFactory;
+import com.github.lovept.kafka.KafkaProducerService;
 import com.github.lovept.mapper.RssItemMapper;
 import com.github.lovept.mapper.RssSourceMapper;
 import com.github.lovept.mapper.UserSubscriptionMapper;
 import com.github.lovept.service.RssParser;
 import com.github.lovept.utils.RssUtil;
-import com.pengrad.telegrambot.TelegramBot;
-import com.pengrad.telegrambot.model.request.ParseMode;
-import com.pengrad.telegrambot.request.SendMessage;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,12 +23,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+
+/**
+ * @author lovept
+ * @date 2024/7/23 20:50
+ * @description rss处理
+ */
 @Slf4j
 @Service
 public class RssHandler {
-
-    @Resource
-    private TelegramBot bot;
 
     @Resource
     private RssItemMapper rssItemMapper;
@@ -43,6 +44,9 @@ public class RssHandler {
 
     @Resource
     private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private KafkaProducerService kafkaProducerService;
 
     private final Map<Long, Lock> userLocks = new ConcurrentHashMap<>();
 
@@ -93,7 +97,8 @@ public class RssHandler {
                     .orElse(RssUtil.getDefaultDate());
 
             subscription.setNotifiedAt(latestPubDate);
-            items.forEach(item -> sendTelegramMessage(subscription.getTelegramId(), formatRssMessage(item)));
+            // 发送消息到Kafka
+            items.forEach(item -> kafkaProducerService.sendMessage("rss_bot_topic", subscription.getTelegramId() + ":" + formatRssMessage(item)));
             updateUserSubscriptionNotifiedAt(subscription, sourceId);
         } finally {
             userLock.unlock();
@@ -112,8 +117,7 @@ public class RssHandler {
     private void saveOrUpdateRssItem(RssItem item) {
         try {
             rssItemMapper.insert(item);
-        } catch (Exception e) {
-            //log.error("Item already exists: {}", item.getLink());
+        } catch (Exception ignored) {
         }
     }
 
@@ -132,10 +136,6 @@ public class RssHandler {
         return "[" + item.getTitle() + "](" + item.getLink() + ")";
     }
 
-    private void sendTelegramMessage(long chatId, String text) {
-        SendMessage sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
-        bot.execute(sendMessage);
-    }
 
     private void updateUserSubscriptionNotifiedAt(UserSubscription subscription, Integer sourceId) {
         QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
