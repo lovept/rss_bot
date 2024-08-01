@@ -60,6 +60,9 @@ public class RssHandler {
         try (InputStream is = new URI(source.getSourceUrl()).toURL().openStream()) {
             RssParser parser = RssParserFactory.getParser(source.getSourceUrl());
             List<RssItem> items = parser.parse(is, source.getId());
+            if (items == null) {
+                return;
+            }
             List<UserSubscription> subscriptionList = getUserSubscriptionsBySource(source);
 
             subscriptionList.forEach(subscription -> transactionTemplate.execute(status -> {
