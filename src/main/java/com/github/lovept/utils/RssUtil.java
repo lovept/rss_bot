@@ -5,6 +5,8 @@ import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.FeedException;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
+import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,16 +20,18 @@ import java.util.List;
  * @author lovept
  * @date 2024/7/23 20:50
  */
+@Log4j2
 public class RssUtil {
 
     public static SyndFeed buildSyndFeed(InputStream is) {
         SyndFeed feed;
         try {
             feed = new SyndFeedInput().build(new XmlReader(is));
+            return feed;
         } catch (FeedException | IOException e) {
-            throw new RuntimeException(e);
+            log.error("RssUtil error : ", e);
+            return null;
         }
-        return feed;
     }
 
     public static SyndFeed buildSyndFeed(String url) {
@@ -38,10 +42,12 @@ public class RssUtil {
         SyndFeed feed;
         try (InputStream is = con.getInputStream()) {
             feed = new SyndFeedInput().build(new XmlReader(is));
+            return feed;
         } catch (FeedException | IOException e) {
-            throw new RuntimeException(e);
+            log.error("RssUtil error : ", e);
+            return null;
         }
-        return feed;
+
     }
 
 

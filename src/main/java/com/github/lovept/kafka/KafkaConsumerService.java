@@ -50,7 +50,7 @@ public class KafkaConsumerService {
         try {
             messageQueue.put(message);
         } catch (InterruptedException e) {
-            log.error(e.getMessage());
+            log.error("consumeMessages error", e);
             Thread.currentThread().interrupt();
         }
     }

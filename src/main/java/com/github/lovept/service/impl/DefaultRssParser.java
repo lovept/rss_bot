@@ -18,6 +18,9 @@ public class DefaultRssParser implements RssParser {
     @Override
     public List<RssItem> parse(InputStream is, Integer sourceId) {
         SyndFeed feed = RssUtil.buildSyndFeed(is);
+        if (feed == null) {
+            return null;
+        }
         return feed.getEntries()
                 .stream()
                 .limit(50)
