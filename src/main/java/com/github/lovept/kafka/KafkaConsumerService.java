@@ -3,8 +3,10 @@ package com.github.lovept.kafka;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.SendMessage;
+import com.pengrad.telegrambot.response.SendResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,9 @@ public class KafkaConsumerService {
     private final TelegramBot bot;
     private final ScheduledExecutorService scheduler;
     private final BlockingQueue<String> messageQueue;
+
+    @Value("${bot.max-retries}")
+    private int maxRetries;
 
     public KafkaConsumerService(TelegramBot bot) {
         this.bot = bot;
@@ -66,13 +71,31 @@ public class KafkaConsumerService {
             if (text.endsWith("\"")) {
                 text = text.substring(0, text.lastIndexOf("\""));
             }
-            sendTelegramMessage(chatId, text);
+            // 发送消息到Telegram，带有重试机制
+            sendTelegramMessageWithRetry(chatId, text, maxRetries);
         }
     }
 
-    private void sendTelegramMessage(long chatId, String text) {
-        SendMessage sendMessage = new SendMessage(chatId, text)
-                .parseMode(ParseMode.Markdown);
-        bot.execute(sendMessage);
+    private void sendTelegramMessageWithRetry(long chatId, String text, int maxRetries) {
+        int attempt = 0;
+        boolean success = false;
+        while (attempt < maxRetries && !success) {
+            attempt++;
+            try {
+                SendMessage sendMessage = new SendMessage(chatId, text)
+                        .parseMode(ParseMode.Markdown);
+                SendResponse response = bot.execute(sendMessage);
+                if (response.isOk()) {
+                    success = true;
+                } else {
+                    log.error("Failed to send message: {}. telegram bot response code: {}", text, response.errorCode());
+                }
+            } catch (Exception e) {
+                log.error("Exception while sending message: {}. Attempt: {}", text, attempt, e);
+            }
+        }
+        if (!success) {
+            log.error("Failed to send message after {} attempts: {}", maxRetries, text);
+        }
     }
 }
