@@ -14,6 +14,8 @@ import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.rometools.rome.feed.synd.SyndFeed;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
  */
 public class TelegramUpdateHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(TelegramUpdateHandler.class);
     private final TelegramBot bot;
     private final Update update;
     private final Map<String, BotCommand> commandMap = new HashMap<>();
@@ -167,22 +170,46 @@ public class TelegramUpdateHandler {
 
         if (matcher.matches()) {
             String sourceId = matcher.group(1);
-            // 删除用户订阅
-            QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("source_id", sourceId);
-            queryWrapper.eq("telegram_id", chatId);
-            UserSubscription userSubscription = userSubscriptionMapper.selectOne(queryWrapper);
 
-            if (userSubscription == null) {
-                sendMessage(chatId, "You didn't subscribe to this.", false);
-                return;
-            }
-            userSubscriptionMapper.delete(queryWrapper);
-            sendMessage(chatId, "Subscription deleted.", true);
+            // 删除用户订阅
+            deleteUserSubscription(sourceId, chatId);
+            // 删除源
+            deleteRssSource(sourceId);
+
         } else {
             sendMessage(chatId, "This command is wrong.", true);
         }
 
+    }
+
+    private void deleteUserSubscription(String sourceId, long chatId) {
+        // 删除用户订阅
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("source_id", sourceId);
+        queryWrapper.eq("telegram_id", chatId);
+        UserSubscription userSubscription = userSubscriptionMapper.selectOne(queryWrapper);
+
+        if (userSubscription == null) {
+            sendMessage(chatId, "You didn't subscribe to this.", false);
+            return;
+        }
+        userSubscriptionMapper.delete(queryWrapper);
+        sendMessage(chatId, "Subscription deleted.", true);
+    }
+
+
+    private void deleteRssSource(String sourceId) {
+        QueryWrapper<UserSubscription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("source_id", sourceId);
+        List<UserSubscription> userSubscriptions = userSubscriptionMapper.selectList(queryWrapper);
+        if (userSubscriptions.isEmpty()) {
+            // 删除源
+            try {
+                rssSourceMapper.deleteById(sourceId);
+            } catch (Exception e) {
+                log.error("Without this rss source.");
+            }
+        }
     }
 
     private void helpCommand() {
@@ -198,7 +225,6 @@ public class TelegramUpdateHandler {
     }
 
 
-
     private void sendMessage(long chatId, String text, boolean replyToMessage) {
         SendMessage sendMessage = new SendMessage(chatId, text).parseMode(ParseMode.Markdown);
         if (replyToMessage) {
@@ -206,7 +232,6 @@ public class TelegramUpdateHandler {
         }
         bot.execute(sendMessage);
     }
-
 
 
     private void processUserSubscription(User user, RssSource source) {
