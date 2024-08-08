@@ -3,6 +3,7 @@ package com.github.lovept.factory;
 import com.github.lovept.service.RssParser;
 import com.github.lovept.service.impl.DefaultRssParser;
 import com.github.lovept.service.impl.NodeSeekRssParser;
+import com.github.lovept.service.impl.PoJie52RssParser;
 import com.github.lovept.service.impl.SouthPlusRssParser;
 
 /**
@@ -14,6 +15,8 @@ public class RssParserFactory {
             return new SouthPlusRssParser();
         } else if (sourceUrl.contains("www.nodeseek.com")) {
             return new NodeSeekRssParser();
+        }else if (sourceUrl.contains("www.52pojie.cn")) {
+            return new PoJie52RssParser();
         }else {
             return new DefaultRssParser();
         }
