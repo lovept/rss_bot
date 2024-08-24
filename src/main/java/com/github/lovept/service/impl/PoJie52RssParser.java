@@ -23,7 +23,7 @@ public class PoJie52RssParser implements RssParser {
         }
         return feed.getEntries()
                 .stream()
-                //.filter(entry -> "『悬赏问答区』".equals(entry.getCategories().getFirst().getName()))
+                .filter(entry -> !"『悬赏问答区』".equals(entry.getCategories().getFirst().getName()))
                 .limit(50)
                 .map(entry -> RssItem.builder()
                         .sourceId(sourceId)
